@@ -31,6 +31,9 @@ Brought to you by:
 - overcast302
 - pkkf5773
 
+## Credits
+- [pymobiledevice3](https://github.com/doronz88/pymobiledevice3)
+
 ## License
 
 Refer to the repository license file for licensing details.
