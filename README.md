@@ -29,7 +29,7 @@ No other configuration files are used for backend URL resolution.
 
 Brought to you by:
 - overcast302
-- pkkf5773
+- pkkf5673
 
 ## Credits
 - [pymobiledevice3](https://github.com/doronz88/pymobiledevice3)
