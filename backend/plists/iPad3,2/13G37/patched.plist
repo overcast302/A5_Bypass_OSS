@@ -126,7 +126,7 @@
 		<key>k7QIBwZJJOVw+Sej/8h8VA</key>
 		<string>armv7f</string>
 		<key>mZfUC7qo4pURNhyMHZ62RQ</key>
-		<string>13G36</string>
+		<string>13G37</string>
 		<key>mumHZHMLEfAuTkkd28fHlQ</key>
 		<string>black</string>
 		<key>nSo8opze5rFk+EdBoR6tBw</key>
@@ -161,7 +161,7 @@
 			<string>0</string>
 		</dict>
 		<key>qNNddlUK+B/YlooNoymwgA</key>
-		<string>9.3.5</string>
+		<string>9.3.6</string>
 		<key>rkqlwPcRHwixY4gapPjanw</key>
 		<string>iPad 3</string>
 		<key>xUHcyT2/HE8oi/4LaOI+Sw</key>
@@ -172,6 +172,6 @@
 	<key>CacheUUID</key>
 	<string>3254FA32-A905-4FEC-A2A1-75CBFAE7D248</string>
 	<key>CacheVersion</key>
-	<string>13G36</string>
+	<string>13G37</string>
 </dict>
 </plist>
