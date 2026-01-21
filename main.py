@@ -114,7 +114,7 @@ class WorkerThread(QThread):
             self.finished.emit("Done!")
             
         except Exception as e:
-            self.error.emit(str(e))
+            self.error.emit(repr(e))
 
 
 class MainWindow(QMainWindow):
