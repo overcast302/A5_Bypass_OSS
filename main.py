@@ -72,6 +72,8 @@ class WorkerThread(QThread):
                     open(payload_path, 'rb').read()
                 )
             
+            time.sleep(5) # may improve initial attempt success rate?
+
             DiagnosticsService(lockdown=lockdown).restart()
             time.sleep(10)
             
