@@ -2,11 +2,16 @@ import sys
 import os
 import time
 
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QLabel, QMessageBox
+from PyQt6.QtWidgets import (
+    QApplication, QMainWindow, QWidget,
+    QVBoxLayout, QPushButton, QLabel, QMessageBox
+)
 from PyQt6.QtCore import QThread, pyqtSignal, QTimer
+
 from pymobiledevice3.lockdown import create_using_usbmux, NoDeviceConnectedError
 from pymobiledevice3.services.afc import AfcService
 from pymobiledevice3.services.diagnostics import DiagnosticsService
+
 
 SUPPORTED_DEVICES = {
     'iPhone4,1',
@@ -18,130 +23,147 @@ SUPPORTED_DEVICES = {
 
 SUPPORTED_VERSIONS = {'8.4.1', '9.3.5', '9.3.6'}
 
-# pyinstaller resource path handling fix
-def resource_path(relative_path):
-    base_path = getattr(sys, '_MEIPASS', os.path.abspath('.'))
-    return os.path.join(base_path, relative_path)
+# pyinstaller resource path fix
+def resource_path(name):
+    base = getattr(sys, '_MEIPASS', os.path.abspath('.'))
+    return os.path.join(base, name)
+
 
 class ActivationThread(QThread):
-    finished = pyqtSignal(str)
+    status = pyqtSignal(str)
+    success = pyqtSignal(str)
     error = pyqtSignal(str)
-    status_update = pyqtSignal(str)
 
     def wait_for_device(self, timeout=90):
-        self.status_update.emit('Waiting for device to return...')
+        self.status.emit('Waiting for device to return...')
         start = time.monotonic()
 
         while time.monotonic() - start < timeout:
             try:
-                lockdown = create_using_usbmux()
-                if lockdown.get_value(key='ProductType'):
-                    return lockdown
+                return create_using_usbmux()
             except NoDeviceConnectedError:
-                pass
-            time.sleep(1)
+                time.sleep(1)
 
         raise TimeoutError()
 
-    def push_payload(self, lockdown, payload_path, delay=10):
-        with AfcService(lockdown=lockdown) as afc:
+    def push_payload(self, lockdown, payload):
+        with AfcService(lockdown=lockdown) as afc, open(payload, 'rb') as f:
             afc.set_file_contents(
                 'Downloads/downloads.28.sqlitedb',
-                open(payload_path, 'rb').read()
+                f.read()
             )
-        time.sleep(delay)
+
         DiagnosticsService(lockdown=lockdown).restart()
         time.sleep(10)
-        return self.wait_for_device()   
+        return self.wait_for_device()
 
-    def get_should_hactivate(self, lockdown):
+    def should_hactivate(self, lockdown):
         diag = DiagnosticsService(lockdown=lockdown)
-        return diag.mobilegestalt(keys=['ShouldHactivate']).get('ShouldHactivate')
-    
+        return diag.mobilegestalt(
+            keys=['ShouldHactivate']
+        ).get('ShouldHactivate')
+
     def run(self):
         try:
             lockdown = create_using_usbmux()
 
             if lockdown.get_value(key='ActivationState') == 'Activated':
-                self.finished.emit('Device is already activated')
+                self.success.emit('Device is already activated')
                 return
 
-            if lockdown.get_value(key='ProductVersion') == '8.4.1' and lockdown.get_value(key='TelephonyCapability'):
-                self.finished.emit('Cellular iOS 8.4.1 devices activation is partially broken. Proceed with caution.') # https://github.com/overcast302/A5_Bypass_OSS/issues/7
+            payload = resource_path('payload')
+            self.status.emit('Activating device...')
 
-            self.status_update.emit('Activating device...')
-            payload_path = resource_path('payload')
+            for attempt in range(5):
+                lockdown = self.push_payload(lockdown, payload)
 
-            lockdown = self.push_payload(lockdown, payload_path)
-
-            should_hactivate = self.get_should_hactivate(lockdown)
-
-            if should_hactivate is False:
-                for i in range(5):
-                    self.status_update.emit(f'Retrying activation\nAttempt {i+1}/5')
-                    lockdown = self.push_payload(lockdown, payload_path, 10+i*5)
-                    should_hactivate = self.get_should_hactivate(lockdown)
-                    if should_hactivate is not False:
-                        break
-
-                if should_hactivate is False:
-                    self.error.emit('Activation failed after multiple attempts. Make sure the device is connected to the Wi-Fi.')
+                if self.should_hactivate(lockdown) is not False:
+                    DiagnosticsService(lockdown=lockdown).restart()
+                    self.success.emit('Done!')
                     return
 
-            DiagnosticsService(lockdown=lockdown).restart()
-            self.finished.emit('Done!')
+                self.status.emit(f'Retrying activation\nAttempt {attempt + 1}/5')
+                time.sleep(5)
 
-        except TimeoutError as e:
-            self.error.emit('Device did not reconnect in time. Please ensure it is connected and try again.')
+            self.error.emit(
+                'Activation failed after multiple attempts. Make sure the device is connected to the Wi-Fi.'
+            )
+
+        except TimeoutError:
+            self.error.emit(
+                'Device did not reconnect in time. Please ensure it is connected and try again.'
+            )
         except Exception as e:
-            self.error.emit(repr(e))
+            self.error.emit(str(e))
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+
         self.setWindowTitle('A5 Bypass OSS v1.0.2')
         self.setFixedSize(300, 200)
 
+        self.warning_shown = False
+
+        self.status = QLabel('No device connected')
+        self.activate = QPushButton('Activate Device')
+        self.activate.setEnabled(False)
+
         layout = QVBoxLayout()
+        layout.addWidget(self.status)
+        layout.addWidget(self.activate)
+
         container = QWidget()
         container.setLayout(layout)
         self.setCentralWidget(container)
 
-        self.status_label = QLabel('No device connected')
-        self.btn_activate = QPushButton('Activate Device')
-
-        layout.addWidget(self.status_label)
-        layout.addWidget(self.btn_activate)
-
-        self.btn_activate.clicked.connect(self.activate_device)
+        self.activate.clicked.connect(self.start_activation)
 
         self.timer = QTimer(self)
-        self.timer.timeout.connect(self.check_device)
+        self.timer.timeout.connect(self.poll_device)
         self.timer.start(1000)
 
-    def check_device(self):
+    def poll_device(self):
         try:
             lockdown = create_using_usbmux()
-            product = lockdown.get_value(key='ProductType')
-            version = lockdown.get_value(key='ProductVersion')
+            info = lockdown.get_value()
 
-            if product in SUPPORTED_DEVICES:
-                if version in SUPPORTED_VERSIONS:
-                    self.status_label.setText(f'Connected: {product} ({version})')
-                    self.btn_activate.setEnabled(True)
-                else:
-                    self.status_label.setText(f'Unsupported iOS: {version}')
-                    self.btn_activate.setEnabled(False)
-            else:
-                self.status_label.setText(f'Unsupported Device: {product}')
-                self.btn_activate.setEnabled(False)
+            product = info.get('ProductType')
+            version = info.get('ProductVersion')
 
-        except Exception:
-            self.status_label.setText('No device connected')
-            self.btn_activate.setEnabled(False)
+            if product not in SUPPORTED_DEVICES:
+                self._set_state(f'Unsupported Device: {product}', False)
+                return
 
-    def activate_device(self):
+            if version not in SUPPORTED_VERSIONS:
+                self._set_state(f'Unsupported iOS: {version}', False)
+                return
+
+            # https://github.com/overcast302/A5_Bypass_OSS/issues/7
+            if (
+                version == '8.4.1'
+                and info.get('TelephonyCapability')
+                and not self.warning_shown
+            ):
+                QMessageBox.information(
+                    self,
+                    'Warning',
+                    'Cellular iOS 8.4.1 devices activation is partially broken. Proceed with caution.'
+                )
+                self.warning_shown = True
+
+            self._set_state(f'Connected: {product} ({version})', True)
+
+        except NoDeviceConnectedError:
+            self.warning_shown = False
+            self._set_state('No device connected', False)
+
+    def _set_state(self, text, enabled):
+        self.status.setText(text)
+        self.activate.setEnabled(enabled)
+
+    def start_activation(self):
         QMessageBox.information(
             self,
             'Info',
@@ -149,27 +171,24 @@ class MainWindow(QMainWindow):
         )
 
         self.timer.stop()
-        self.btn_activate.setEnabled(False)
+        self.activate.setEnabled(False)
 
-        self.thread = ActivationThread()
-        self.thread.status_update.connect(self.update_status)
-        self.thread.finished.connect(self.on_success)
-        self.thread.error.connect(self.on_error)
-        self.thread.start()
+        self.worker = ActivationThread()
+        self.worker.status.connect(self.status.setText)
+        self.worker.success.connect(self.on_success)
+        self.worker.error.connect(self.on_error)
+        self.worker.start()
 
-    def update_status(self, message):
-        self.status_label.setText(message)
-
-    def on_success(self, message):
-        self.status_label.setText(message)
-        QMessageBox.information(self, 'Success', message)
-        self.btn_activate.setEnabled(True)
+    def on_success(self, msg):
+        self.status.setText(msg)
+        QMessageBox.information(self, 'Success', msg)
+        self.activate.setEnabled(True)
         self.timer.start(1000)
 
-    def on_error(self, message):
-        QMessageBox.critical(self, 'Error', message)
-        self.status_label.setText('Error occurred')
-        self.btn_activate.setEnabled(True)
+    def on_error(self, msg):
+        QMessageBox.critical(self, 'Error', msg)
+        self.status.setText('Error occurred')
+        self.activate.setEnabled(True)
         self.timer.start(1000)
 
 
