@@ -16,14 +16,11 @@ jobs:
         include:
           - os: windows-latest
             file_name: "a5_bypass_oss_windows"
-          
           - os: ubuntu-latest
             file_name: "a5_bypass_oss_linux"
-          
           - os: macos-latest
             file_name: "a5_bypass_oss_macos_arm64"
-            
-          - os: macos-15-intel
+          - os: macos-13
             file_name: "a5_bypass_oss_macos_intel"
 
     steps:
@@ -37,13 +34,26 @@ jobs:
     - name: Install Dependencies
       run: |
         pip install PyQt6 pymobiledevice3 pyinstaller
+        if [ "$RUNNER_OS" == "macOS" ]; then brew install create-dmg; fi
 
     - name: Build with PyInstaller
+      env:
+        MACOSX_DEPLOYMENT_TARGET: "12.0"
       run: |
         pyinstaller --noconfirm --onefile --windowed --name "${{ matrix.file_name }}" --add-data "payload${{ runner.os == 'Windows' && ';' || ':' }}." --hidden-import "pymobiledevice3" main.py
+
+    - name: Package macOS DMG
+      if: runner.os == 'macOS'
+      run: |
+        cd dist
+        plutil -replace LSMinimumSystemVersion -string "12.0" "${{ matrix.file_name }}.app/Contents/Info.plist"
+        create-dmg --volname "Installer" --window-pos 200 120 --window-size 600 300 --icon-size 100 --text-size 12 --hide-extension "${{ matrix.file_name }}.app" --app-drop-link 450 140 --icon "${{ matrix.file_name }}.app" 150 140 "${{ matrix.file_name }}.dmg" "${{ matrix.file_name }}.app"
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.file_name }}
-        path: dist/*
+        path: |
+          dist/*.dmg
+          dist/*.exe
+          dist/${{ matrix.file_name }}
