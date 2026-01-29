@@ -34,17 +34,21 @@ class ActivationThread(QThread):
     success = pyqtSignal(str)
     error = pyqtSignal(str)
 
-    def wait_for_device(self, timeout=90):
-        self.status.emit('Waiting for device to return...')
+    def wait_for_device(self, timeout=120):
         start = time.monotonic()
 
         while time.monotonic() - start < timeout:
             try:
-                return create_using_usbmux()
-            except NoDeviceConnectedError:
-                time.sleep(1)
+                lockdown = create_using_usbmux()
+                DiagnosticsService(lockdown=lockdown).mobilegestalt(
+                    keys=['ProductType']
+                )
+                return lockdown
+            except Exception:
+                time.sleep(2)
 
         raise TimeoutError()
+
 
     def push_payload(self, lockdown, payload):
         with AfcService(lockdown=lockdown) as afc, open(payload, 'rb') as f:
