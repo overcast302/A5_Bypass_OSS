@@ -32,7 +32,7 @@ jobs:
         python-version: '3.11'
 
     - name: Install Dependencies
-      run: pip install PyQt6 pymobiledevice3 pyinstaller
+      run: pip install PyQt5 pymobiledevice3 pyinstaller
 
     - name: Install DMG Creator
       if: runner.os == 'macOS'
@@ -40,7 +40,7 @@ jobs:
 
     - name: Build with PyInstaller
       env:
-        MACOSX_DEPLOYMENT_TARGET: "12.0"
+        MACOSX_DEPLOYMENT_TARGET: "10.13"
       run: |
         pyinstaller --noconfirm --onefile --windowed --name "${{ matrix.file_name }}" --add-data "payload${{ runner.os == 'Windows' && ';' || ':' }}." --hidden-import "pymobiledevice3" main.py
 
@@ -48,7 +48,7 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         cd dist
-        plutil -replace LSMinimumSystemVersion -string "12.0" "${{ matrix.file_name }}.app/Contents/Info.plist"
+        plutil -replace LSMinimumSystemVersion -string "10.13" "${{ matrix.file_name }}.app/Contents/Info.plist"
         codesign --force --deep --sign - "${{ matrix.file_name }}.app"
         create-dmg --volname "Installer" --window-pos 200 120 --window-size 600 300 --icon-size 100 --text-size 12 --hide-extension "${{ matrix.file_name }}.app" --app-drop-link 450 140 --icon "${{ matrix.file_name }}.app" 150 140 "${{ matrix.file_name }}.dmg" "${{ matrix.file_name }}.app"
 

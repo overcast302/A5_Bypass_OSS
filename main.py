@@ -2,11 +2,11 @@ import sys
 import os
 import time
 
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget,
     QVBoxLayout, QPushButton, QLabel, QMessageBox
 )
-from PyQt6.QtCore import QThread, pyqtSignal, QTimer
+from PyQt5.QtCore import QThread, pyqtSignal, QTimer
 
 from pymobiledevice3.lockdown import create_using_usbmux, NoDeviceConnectedError
 from pymobiledevice3.services.afc import AfcService
@@ -105,7 +105,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle('A5 Bypass OSS v1.0.2')
+        self.setWindowTitle('A5 Bypass OSS v1.0.3')
         self.setFixedSize(300, 200)
 
         self.warning_shown = False
