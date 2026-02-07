@@ -15,9 +15,7 @@ The authors and contributors take no responsibility for misuse or for any damage
 
 ## Compatibility
 
-The tool is compatible with all A5 devices running **iOS 9.3.6** and **iOS 9.3.5**
-
-Support for **iOS 8.4.1** was introduced in [v1.0.1](https://github.com/overcast302/A5_Bypass_OSS/releases/tag/v1.0.1). However, it is currently broken on cellular devices (see [#7](https://github.com/overcast302/A5_Bypass_OSS/issues/7)). Wi-Fi models are fully supported.
+The tool is compatible with all A5 devices running **iOS 9.3.6**, **iOS 9.3.5** and **iOS 8.4.1**.  
 
 No support for other iOS versions is planned yet.
 
