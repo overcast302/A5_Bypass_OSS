@@ -105,10 +105,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle('A5 Bypass OSS v1.0.3')
+        self.setWindowTitle('A5 Bypass OSS v1.0.4')
         self.setFixedSize(300, 200)
-
-        self.warning_shown = False
 
         self.status = QLabel('No device connected')
         self.activate = QPushButton('Activate Device')
@@ -144,23 +142,9 @@ class MainWindow(QMainWindow):
                 self._set_state(f'Unsupported iOS: {version}', False)
                 return
 
-            # https://github.com/overcast302/A5_Bypass_OSS/issues/7
-            if (
-                version == '8.4.1'
-                and info.get('TelephonyCapability')
-                and not self.warning_shown
-            ):
-                QMessageBox.information(
-                    self,
-                    'Warning',
-                    'Cellular iOS 8.4.1 devices activation is partially broken. Proceed with caution.'
-                )
-                self.warning_shown = True
-
             self._set_state(f'Connected: {product} ({version})', True)
 
         except NoDeviceConnectedError:
-            self.warning_shown = False
             self._set_state('No device connected', False)
 
     def _set_state(self, text, enabled):
