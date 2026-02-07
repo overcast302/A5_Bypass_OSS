@@ -144,7 +144,7 @@ class MainWindow(QMainWindow):
 
             self._set_state(f'Connected: {product} ({version})', True)
 
-        except NoDeviceConnectedError:
+        except Exception:
             self._set_state('No device connected', False)
 
     def _set_state(self, text, enabled):
