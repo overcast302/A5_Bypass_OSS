@@ -106,7 +106,7 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle('A5 Bypass OSS v1.0.4')
-        self.setFixedSize(300, 200)
+        self.setFixedSize(500, 200)
 
         self.status = QLabel('No device connected')
         self.activate = QPushButton('Activate Device')
