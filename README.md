@@ -15,7 +15,7 @@ The authors and contributors take no responsibility for misuse or for any damage
 
 ## Compatibility
 
-The tool is compatible with all A5 devices running **iOS 9.3.6**, **iOS 9.3.5** and **iOS 8.4.1**.  
+The tool is compatible with all A5 devices running **iOS 9.3.6**, **iOS 9.3.5** and with **Wi-Fi** devices running **iOS 8.4.1**.  
 
 No support for other iOS versions is planned yet.
 
