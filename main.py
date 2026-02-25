@@ -58,7 +58,6 @@ class ActivationThread(QThread):
             )
 
         DiagnosticsService(lockdown=lockdown).restart()
-        time.sleep(10)
         return self.wait_for_device()
 
     def should_hactivate(self, lockdown):
