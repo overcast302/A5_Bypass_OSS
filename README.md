@@ -17,8 +17,6 @@ The authors and contributors take no responsibility for misuse or for any damage
 
 The tool is compatible with all A5 devices running **iOS 9.3.6**, **iOS 9.3.5** and with **Wi-Fi** devices running **iOS 8.4.1**.  
 
-No support for other iOS versions is planned yet.
-
 ## Backend Configuration
 
 The backend URL is stored inside the payload SQLite database.
