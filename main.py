@@ -189,7 +189,6 @@ class MainWindow(QMainWindow):
     def on_error(self, msg):
         QMessageBox.critical(self, 'Error', msg)
         self.status.setText('Error occurred')
-        self.activate.setEnabled(True)
         self.timer.start(1000)
 
 
