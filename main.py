@@ -116,7 +116,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle('A5 Bypass OSS v1.0.5')
+        self.setWindowTitle('A5 Bypass OSS v1.0.6')
         self.setFixedSize(500, 200)
 
         self.status = QLabel('No device connected')
