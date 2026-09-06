@@ -42,7 +42,7 @@ jobs:
       env:
         MACOSX_DEPLOYMENT_TARGET: "10.13"
       run: |
-        pyinstaller --noconfirm --onefile --windowed --name "${{ matrix.file_name }}" --add-data "payload.sql:." --hidden-import "pymobiledevice3" main.py
+        pyinstaller --noconfirm --onefile --windowed --name "${{ matrix.file_name }}" --add-data "exploits/itunesstored/payload.sql:exploits/itunesstored" --hidden-import "pymobiledevice3" main.py
 
     - name: Package macOS DMG
       if: runner.os == 'macOS'

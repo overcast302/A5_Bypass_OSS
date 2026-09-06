@@ -7,6 +7,7 @@ apple-compress==0.2.3 ; sys_platform == 'darwin'
 arrow==1.4.0
 asn1==2.8.0
 asttokens==3.0.2
+bcrypt==4.3.0
 blessed==1.47.0
 bpylist2==4.1.1
 certifi==2026.7.22
@@ -48,6 +49,7 @@ nest-asyncio==1.6.0
 opack2==0.0.1
 packaging==26.2
 parameter-decorators==0.0.2
+paramiko==3.5.1
 parso==0.8.7
 pefile==2024.8.26 ; sys_platform == 'win32'
 pexpect==4.9.0 ; sys_platform != 'emscripten' and sys_platform != 'win32'
@@ -70,6 +72,7 @@ pyinstaller-hooks-contrib==2026.6
 pykdebugparser==1.2.8
 pylzss==0.3.4
 pymobiledevice3==7.8.3
+pynacl==1.5.0
 pyqt5==5.15.11
 pyreadline3==3.5.6 ; sys_platform == 'win32'
 python-dateutil==2.9.0.post0

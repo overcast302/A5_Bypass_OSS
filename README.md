@@ -1,6 +1,6 @@
 # hacktiv8 
 
-hacktiv8(formerly A5_Bypass_OSS) is an open-source research project focused on analyzing and experimenting with iOS activation proccess using itunesstored sandbox escape vulnerability. It provides a one-click cross-platform solution for bypassing activation on legacy iOS devices without the need of pwning.
+hacktiv8(formerly A5_Bypass_OSS) is an open-source research project focused on analyzing and experimenting with the iOS activation process. It provides a one-click cross-platform solution for bypassing activation on legacy iOS devices without the need of pwning DFU.
 
 ## Disclaimer
 
@@ -10,16 +10,18 @@ The authors and contributors take no responsibility for any misuse or damage cau
 
 ## Requirements
 
-The both host and target devices must be connected to Wi-Fi at all times during operation.  
-Network connectivity is mandatory for the application workflow to function correctly.
+For the `itunesstored` exploit (iOS 9 - 10), both the host and target devices must be connected to Wi-Fi at all times during operation.  
+Jailbroken devices works fully offline over USB, but requires a jailbroken target.
 
 ## Compatibility
 
-The tool targets iOS 9 and 10 devices (and Wi-Fi-only devices on iOS 8).
+- iOS 9.0 - 10.3.4, not jailbroken
+- iOS 8.0 - 8.4.1, not jailbroken (Wi-Fi-only devices)
+- iOS 4.0 - 8.4.1, jailbroken
 
 ## Backend Configuration
 
-The backend URL is stored in the `BACKEND_URL` global constant of [`main.py`](https://github.com/overcast302/hacktiv8/blob/main/main.py#L18)
+The backend URL is stored in the `BACKEND_URL` global constant of [`exploits/itunesstored/itunesstored.py`](exploits/itunesstored/itunesstored.py#L13)
 
 Due to legacy iOS devices lacking trust for modern certificate authorities, the backend must either use HTTP, or serve an SSL certificate that chains to a root CA trusted by legacy iOS. Modern certificate authorities such as Let's Encrypt are not trusted on legacy iOS versions and will cause HTTPS connections to fail on target devices.
 

