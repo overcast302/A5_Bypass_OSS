@@ -21,7 +21,7 @@ Jailbroken devices works fully offline over USB, but requires a jailbroken targe
 
 ## Backend Configuration
 
-The backend URL is stored in the `BACKEND_URL` global constant of [`exploits/itunesstored/itunesstored.py`](exploits/itunesstored/itunesstored.py#L13)
+The backend URL can be configured via Settings dialog. When left empty, the defaults from [`exploits/itunesstored/itunesstored.py`](exploits/itunesstored/itunesstored.py#L13) are used.
 
 Due to legacy iOS devices lacking trust for modern certificate authorities, the backend must either use HTTP, or serve an SSL certificate that chains to a root CA trusted by legacy iOS. Modern certificate authorities such as Let's Encrypt are not trusted on legacy iOS versions and will cause HTTPS connections to fail on target devices.
 
