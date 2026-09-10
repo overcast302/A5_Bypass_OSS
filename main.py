@@ -101,7 +101,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle('hacktiv8 v1.2.1')
+        self.setWindowTitle('hacktiv8 v1.2.2')
         self.setFixedSize(500, 200)
 
         self.version = (0,)
